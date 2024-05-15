@@ -3,6 +3,12 @@
 pragma solidity >=0.8.2 <0.9.0;
 
 contract BepsTender {
+    mapping(uint256 => mapping(address => bool)) public tenderApplicantsMapping;
+    mapping(uint256 => address[]) public tenderApplicants;
+    mapping(address => TenderTerm[]) public tendersByUser;
+
+    TenderTerm[] public tenders;
+
     struct TenderTerm {
         uint256 tenderId;
         string title;
@@ -32,11 +38,7 @@ contract BepsTender {
         address indexed _applicant
     );
 
-    mapping(uint256 => mapping(address => bool)) public tenderApplicantsMapping;
-    mapping(uint256 => address[]) public tenderApplicants;
-    mapping(address => TenderTerm[]) public tendersByUser;
-
-    TenderTerm[] public tenders;
+    event SupplierPicked(uint256 indexed _tenderId, address indexed _supplier);
 
     function getTenders() public view returns (TenderTerm[] memory) {
         return tenders;
@@ -112,5 +114,29 @@ contract BepsTender {
         tenderApplicants[_tenderId].push(msg.sender);
 
         emit AppliedToTender(_tenderId, msg.sender);
+    }
+
+    function pickSupplier(uint256 _tenderId, address _supplier) external {
+        require(_tenderId < tenders.length, "Tender does not exist");
+        require(
+            tenders[_tenderId].owner == msg.sender,
+            "You are not the owner"
+        );
+        require(
+            tenders[_tenderId].supplier == address(0),
+            "Supplier already picked"
+        );
+        require(
+            tenderApplicantsMapping[_tenderId][_supplier],
+            "Invalid supplier"
+        );
+        require(
+            tenders[_tenderId].deadline > block.timestamp,
+            "Deadline passed"
+        );
+
+        tenders[_tenderId].supplier = _supplier;
+
+        emit SupplierPicked(_tenderId, _supplier);
     }
 }
